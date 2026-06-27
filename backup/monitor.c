@@ -8,7 +8,7 @@
 #include "../include/workers.h"
 
 #define  NUM_WORKERS 3
-
+//Hola
 extern Metadatos memoria_archivos[];
 extern int total_archivos;
 

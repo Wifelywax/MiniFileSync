@@ -19,7 +19,7 @@ mode_t permisos;          // Permisos de lectura,escritura, ejecucion
 time_t fecha_modificacion;
 } Metadatos;
 
-void escanear_directorio(const char* ruta);
+void escanear_directorio(const char* ruta_base);
 
 
 
