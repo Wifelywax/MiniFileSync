@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <linux/limits.h>
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
@@ -10,6 +11,8 @@
 
 #define FIFO_RUTA "/tmp/fifo_backup_so"
 #define LOG_RUTA "./backup/historial.log"
+
+extern char ruta_base_absoluta[PATH_MAX];
 
 void crear_logger(void) {
     unlink(FIFO_RUTA);
@@ -27,10 +30,17 @@ void crear_logger(void) {
 
     if (pid == 0) {
         int fd_fifo = open(FIFO_RUTA, O_RDONLY);
-        int fd_log = open(LOG_RUTA, O_WRONLY | O_CREAT | O_APPEND, 0666);
+
+        char log_ruta[PATH_MAX * 2];
+        snprintf(log_ruta, sizeof(log_ruta), "%s/backup/historial.log", ruta_base_absoluta);
 
         char buffer[512];
         ssize_t bytes_leidos;
+
+       
+        
+        // Usamos la variable construida en lugar de LOG_RUTA
+        int fd_log = open(log_ruta, O_WRONLY | O_CREAT | O_APPEND, 0666);
 
         while ((bytes_leidos = read(fd_fifo, buffer, sizeof(buffer))) > 0) {
             write(fd_log, buffer, bytes_leidos);

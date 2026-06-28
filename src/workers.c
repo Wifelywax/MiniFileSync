@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <linux/limits.h>
 #include <sys/stat.h>
 #include <unistd.h>//open() y banderas
 #include <fcntl.h>
@@ -11,6 +12,7 @@
 #include "../include/registro.h"
 
 #define BUFFER 4096
+extern char ruta_base_absoluta[PATH_MAX];
 
 void procesar_archivo(const char *ruta_origen,int id_worker){
 
@@ -18,8 +20,8 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
     strncpy(cp_ruta, ruta_origen, sizeof(cp_ruta));
     char *nombre_archivo = basename(cp_ruta);
 
-    char ruta_destino[4096];
-    snprintf(ruta_destino, sizeof(ruta_destino), "./backup/%s",nombre_archivo);
+    char ruta_destino[PATH_MAX * 2];
+   snprintf(ruta_destino, sizeof(ruta_destino), "%s/backup/%s", ruta_base_absoluta, nombre_archivo);
 
 
        struct stat stat_origen, stat_destino;

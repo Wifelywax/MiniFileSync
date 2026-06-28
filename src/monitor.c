@@ -12,6 +12,8 @@
 
 #define  NUM_WORKERS 3
 
+char ruta_base_absoluta[PATH_MAX];
+
 extern Metadatos memoria_archivos[];
 extern int total_archivos;
 
@@ -30,7 +32,7 @@ if(pid>0){
 
 if(setsid() < 0){
     perror("Error al ejecutar setsid");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
 }
 
 if(chdir("/")<0){
@@ -45,91 +47,94 @@ if(fd_nulo !=1){
     dup2(fd_nulo, STDERR_FILENO);
 
     close(fd_nulo);
+ }
+
 }
 
-
-}
-
-int main(int argc, char *argv[]){
-    //Verificar si se ejecuta de forma correcta(./scan <directorio>)
-    if(argc != 2){
-        fprintf(stderr, "Debes usarlo de la siguiente forma: %s<directorio>\n", argv[0]);
+int main(int argc, char *argv[]) {
+    // 1. Verificar argumentos antes de hacer cualquier cambio
+    if (argc != 2) {
+        fprintf(stderr, "Uso correcto: %s <directorio>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (getcwd(ruta_base_absoluta, sizeof(ruta_base_absoluta)) == NULL) {
+        perror("Error al obtener el directorio actual");
+        exit(EXIT_FAILURE);
+    }
+    // 2. Resolver la ruta absoluta del directorio objetivo antes del chdir("/")
+    char directorio_objetivo[PATH_MAX];
+    if (realpath(argv[1], directorio_objetivo) == NULL) {
+        perror("Error al resolver la ruta absoluta del directorio");
         exit(EXIT_FAILURE);
     }
 
-    const char *directorio_origen= argv[1];
-    
+    // 3. Inicializar las herramientas globales (Memoria compartida, Semáforos y Logger)
     inicializar_memoria_compartida();
     configurar_semaforos();
     crear_logger();
 
-    printf("Iniciando el monitor de directorios:\n");
-    printf("Escaneando el directorio: %s\n", directorio_origen);
+    // 4. Transformar el proceso principal en Demonio
+    convertir_demonio();
 
-    //Ejecucion del escaner
-    escanear_directorio(directorio_origen);
+    // 5. Bucle Infinito de Monitoreo Continuo
+    while (1) {
+        // RESETEAR CONTADOR: Vital para no arrastrar datos de la iteración de hace 5 segundos
+        total_archivos = 0; 
 
-    //Mostrar los resultados con sus parametros
-    printf("Total de archivos:%d\n", total_archivos);
-    
-    int tuberia[NUM_WORKERS][2];
-    pid_t pids[NUM_WORKERS];
-    printf("Creando %d worker\n", NUM_WORKERS);
+        // Escanear el directorio objetivo de forma recursiva
+        escanear_directorio(directorio_objetivo);
 
+        // Si el escáner detectó archivos, procedemos con la asignación a los workers
+        if (total_archivos > 0) {
+            int tuberia[NUM_WORKERS][2];
+            pid_t pids[NUM_WORKERS];
 
-    for(int i=0; i<NUM_WORKERS;i++){
-        if(pipe(tuberia[i])==-1){
-            perror("Error al crear la tubería");
-            exit(EXIT_FAILURE);
+            // Crear las tuberías y los procesos trabajadores
+            for (int i = 0; i < NUM_WORKERS; i++) {
+                if (pipe(tuberia[i]) == -1) {
+                    exit(EXIT_FAILURE);
+                }
+
+                pids[i] = fork();
+                if (pids[i] == 0) {
+                    // Código del Worker (Hijo)
+                    close(tuberia[i][1]); // Cierra escritura
+                    char ruta_recibida[PATH_MAX];
+
+                    while (read(tuberia[i][0], ruta_recibida, PATH_MAX) > 0) {
+                        procesar_archivo(ruta_recibida, i + 1);
+                    }
+                    close(tuberia[i][0]);
+                    exit(EXIT_SUCCESS);
+                } else {
+                    // Código del Monitor (Padre)
+                    close(tuberia[i][0]); // Cierra lectura
+                }
+            }
+
+            // Distribuir de forma equitativa las rutas encontradas
+            for (int i = 0; i < total_archivos; i++) {
+                int id_worker_asignado = i % NUM_WORKERS;
+                write(tuberia[id_worker_asignado][1], memoria_archivos[i].ruta, PATH_MAX);
+            }
+
+            // Indicar fin de transmisión cerrando los extremos de escritura
+            for (int i = 0; i < NUM_WORKERS; i++) {
+                close(tuberia[i][1]);
+            }
+
+            // Esperar que la ronda actual de workers termine por completo
+            for (int i = 0; i < NUM_WORKERS; i++) {
+                waitpid(pids[i], NULL, 0);
+            }
         }
-    
 
-    pids[i]=fork();
-    
-
-    if(pids[i]==-1){
-        perror("Error al hacer fork");
-        exit(EXIT_FAILURE);
-    }
-    
-    if(pids[i]==0){
-        close(tuberia[i][1]);
-        char ruta_recibida[PATH_MAX];
-
-        while(read(tuberia[i][0], ruta_recibida, PATH_MAX) > 0){
-            procesar_archivo(ruta_recibida,i+1);
-        }
-
-        close(tuberia[i][0]);
-        exit(EXIT_SUCCESS);
-    } else {
-        close(tuberia[i][0]);
+        // Esperar 5 segundos exactos antes de la siguiente revisión completa
+        sleep(5);
     }
 
-}
-
-    for(int i=0;i<total_archivos;i++){
-        
-        int id_worker= i %NUM_WORKERS;
-        write(tuberia[id_worker][1], memoria_archivos[i].ruta, PATH_MAX);
-    }
-
-    for(int i = 0; i < NUM_WORKERS; i++){
-        close(tuberia[i][1]);
-    }
-
-    for(int i=0; i < NUM_WORKERS;i++){
-        waitpid(pids[i],NULL,0);
-    }
-
-    printf("\n Proceso de los workers terminado\n");
-
-    printf("\n=== ESTADÍSTICAS FINALES DEL BACKUP ===\n");
-    printf("Archivos copiados/actualizados: %ld\n", estadisticas_globales->archivos_copiados);
-    printf("Total de bytes transferidos: %ld bytes\n", estadisticas_globales->bytes_copiados);
-    printf("=======================================\n");
-
+    // Liberación formal de recursos (Teórica, el demonio corre hasta ser matado)
     cerrar_limpiar_ipc();
-
     return EXIT_SUCCESS;
 }
