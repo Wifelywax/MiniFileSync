@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <libgen.h> //basename() y extraccion datos
 #include "../include/workers.h"
+#include "../include/utilidades_ipc.h"
 
 #define BUFFER 4096
 
@@ -22,30 +23,27 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
 
        struct stat stat_origen, stat_destino;
 
-    // 1. Extraemos los metadatos del archivo original
+    // Extraer los metadatos del archivo original
     if (stat(ruta_origen, &stat_origen) == -1) {
         perror("Error al leer metadatos del origen");
         return;
     }
 
-    // 2. Comprobamos si el archivo ya existe en la carpeta backup
-    // Si stat() devuelve 0, significa que el archivo destino SÍ existe.
+    //Comprobar si el archivo ya existe en la carpeta backup
+   
     if (stat(ruta_destino, &stat_destino) == 0) {
         
-        // 3. Comparamos el tamaño y la fecha de modificación
-        // Si tienen el mismo tamaño Y la fecha del origen no es más reciente que el destino...
+
         if (stat_origen.st_size == stat_destino.st_size && 
             stat_origen.st_mtime <= stat_destino.st_mtime) {
             
-            // ¡No hay cambios! Omitimos la copia para ahorrar recursos.
+          
             printf("[Worker %d] Omitido (sin cambios): %s\n", id_worker, nombre_archivo);
-            return; // Terminamos la función aquí mismo
+            return;
         }
     }
 
-    // ==========================================
-    // LÓGICA DE COPIA (Solo llega aquí si es nuevo o cambió)
-    // ==========================================
+
     int fd_origen = open(ruta_origen, O_RDONLY);
     if (fd_origen == -1) {
         perror("Error al abrir el archivo de origen");
@@ -76,6 +74,13 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
         // Mensaje actualizado para indicar que realmente hizo el trabajo
         printf("[Worker %d] Copiado/Actualizado exitoso: %s\n", id_worker, nombre_archivo);
     }
+
+    sem_wait(estadisticas_semaforos); 
+ 
+    estadisticas_globales->archivos_copiados++;
+    estadisticas_globales->bytes_copiados += stat_origen.st_size;
+
+    sem_post(estadisticas_semaforos); 
 
     close(fd_origen);
     close(fd_destino);

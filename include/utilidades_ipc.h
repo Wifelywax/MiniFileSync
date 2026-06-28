@@ -1,6 +1,7 @@
 #ifndef UTILIDADES_IPC_H
 #define UTILIDADES_IPC_H
 
+#include <semaphore.h>
 
 struct stats{
 long archivos_copiados;
@@ -8,7 +9,11 @@ long bytes_copiados;
 long errores;
 };
 
+extern struct stats *estadisticas_globales;
+extern sem_t *estadisticas_semaforos;
+
 void inicializar_memoria_compartida(void);
 void configurar_semaforos(void); 
+void cerrar_limpiar_ipc(void);
 
 #endif

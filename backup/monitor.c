@@ -6,9 +6,10 @@
 #include <linux/limits.h>
 #include "../include/escaner.h"
 #include "../include/workers.h"
+#include "../include/utilidades_ipc.h"
 
 #define  NUM_WORKERS 3
-//Hola
+
 extern Metadatos memoria_archivos[];
 extern int total_archivos;
 
@@ -20,6 +21,8 @@ int main(int argc, char *argv[]){
     }
 
     const char *directorio_origen= argv[1];
+    inicializar_memoria_compartida();
+    configurar_semaforos();
 
     printf("Iniciando el monitor de directorios:\n");
     printf("Escaneando el directorio: %s\n", directorio_origen);
@@ -81,6 +84,13 @@ int main(int argc, char *argv[]){
     }
 
     printf("\n Proceso de los workers terminado\n");
+
+    printf("\n=== ESTADÍSTICAS FINALES DEL BACKUP ===\n");
+    printf("Archivos copiados/actualizados: %ld\n", estadisticas_globales->archivos_copiados);
+    printf("Total de bytes transferidos: %ld bytes\n", estadisticas_globales->bytes_copiados);
+    printf("=======================================\n");
+
+    cerrar_limpiar_ipc();
 
     return EXIT_SUCCESS;
 }
