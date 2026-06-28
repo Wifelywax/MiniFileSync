@@ -8,6 +8,7 @@
 #include <libgen.h> //basename() y extraccion datos
 #include "../include/workers.h"
 #include "../include/utilidades_ipc.h"
+#include "../include/registro.h"
 
 #define BUFFER 4096
 
@@ -80,6 +81,7 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
     estadisticas_globales->archivos_copiados++;
     estadisticas_globales->bytes_copiados += stat_origen.st_size;
 
+    registrar_evento(nombre_archivo);
     sem_post(estadisticas_semaforos); 
 
     close(fd_origen);

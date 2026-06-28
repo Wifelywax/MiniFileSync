@@ -3,15 +3,52 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <fcntl.h>
 #include <linux/limits.h>
 #include "../include/escaner.h"
 #include "../include/workers.h"
 #include "../include/utilidades_ipc.h"
+#include "../include/registro.h"
 
 #define  NUM_WORKERS 3
 
 extern Metadatos memoria_archivos[];
 extern int total_archivos;
+
+void convertir_demonio(){
+
+pid_t pid=fork();
+
+if (pid<0){
+    perror("Error al hacer fork");
+    exit(EXIT_FAILURE);
+}
+
+if(pid>0){
+    printf("[Monitor] en segundo plano");
+}
+
+if(setsid() < 0){
+    perror("Error al ejecutar setsid");
+    exit(EXIT_FAILURE);
+}
+
+if(chdir("/")<0){
+    perror("Error al cambiar directorio raiz");
+    exit(EXIT_FAILURE);
+}
+
+int fd_nulo = open("/dev/null",O_RDWR);
+if(fd_nulo !=1){
+    dup2(fd_nulo, STDIN_FILENO);
+    dup2(fd_nulo, STDOUT_FILENO);
+    dup2(fd_nulo, STDERR_FILENO);
+
+    close(fd_nulo);
+}
+
+
+}
 
 int main(int argc, char *argv[]){
     //Verificar si se ejecuta de forma correcta(./scan <directorio>)
@@ -21,8 +58,10 @@ int main(int argc, char *argv[]){
     }
 
     const char *directorio_origen= argv[1];
+    
     inicializar_memoria_compartida();
     configurar_semaforos();
+    crear_logger();
 
     printf("Iniciando el monitor de directorios:\n");
     printf("Escaneando el directorio: %s\n", directorio_origen);
