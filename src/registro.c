@@ -29,7 +29,7 @@ void crear_logger(void) {
     }
 
     if (pid == 0) {
-        int fd_fifo = open(FIFO_RUTA, O_RDONLY);
+        int fd_fifo = open(FIFO_RUTA, O_RDWR);
 
         char log_ruta[PATH_MAX * 2];
         snprintf(log_ruta, sizeof(log_ruta), "%s/backup/historial.log", ruta_base_absoluta);
