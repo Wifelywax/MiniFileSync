@@ -2,7 +2,7 @@
 #define UTILIDADES_IPC_H
 
 #include <semaphore.h>
-/*Estructura */
+/*Estructura base para el proyecto */
 struct stats{
 long archivos_copiados;
 long bytes_copiados;

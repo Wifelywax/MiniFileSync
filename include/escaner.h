@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <linux/limits.h> //Para usa PATH_MAX (no valia solo con el limits.h)
-#include <limits.h>
 
 typedef struct{
 char ruta[PATH_MAX];

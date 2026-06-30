@@ -4,11 +4,10 @@
 #include <dirent.h> //Archivo de cabecera (interaccion con el sistema de archivos)
 #include <sys/stat.h>
 #include <unistd.h>
-#include <limits.h>
 #include "../include/escaner.h"
 
 #define MAX_ARCHIVOS 1024
-//Almacenaje de datos
+//Almacenar de datos
 Metadatos memoria_archivos[MAX_ARCHIVOS];
 int total_archivos = 0;
 
@@ -23,20 +22,20 @@ return;
 
 struct dirent *entrada;
 
-//Lectura del directorio
+//Leer el directorio
 while((entrada=readdir(directorio))!=NULL){
 
  //Ignorar los directorios ocultos (evitar bucles)
 if(strcmp(entrada->d_name,".")==0 || strcmp(entrada->d_name,"..")==0) 
 continue;
 
-//Construcion de ruta
+//Construirde ruta
 char ruta_completa[PATH_MAX];
 snprintf(ruta_completa, sizeof(ruta_completa), "%s/%s", ruta_base, entrada->d_name);
 
 struct stat info_archivo;
 
-//Lectura de Metadatos(Verifica si es softlink o un archivo)
+//Leer Metadatos(Verifica si es softlink o un archivo)
 if(lstat(ruta_completa, &info_archivo)==-1){
     perror("Error al leer metadatos del archivo");
     continue;
