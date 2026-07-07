@@ -74,10 +74,29 @@ int main(int argc, char *argv[]) {
     configurar_semaforos();
     crear_logger();
 
-    // 4. Transformar el proceso principal en Demonio
+    //4. Imprimir datos
+    total_archivos = 0;
+    escanear_directorio(directorio_objetivo); // Escanear una vez
+    
+    printf("\n=== METADATOS RECOPILADOS EN MEMORIA ===\n");
+    for (int i = 0; i < total_archivos; i++) {
+        // Extraemos solo el nombre del archivo de la ruta larga para que se vea bonito
+        char *nombre = strrchr(memoria_archivos[i].ruta, '/');
+        nombre = (nombre) ? nombre + 1 : memoria_archivos[i].ruta;
+
+        // Imprimimos el Inodo, Tamaño y los Permisos en formato octal (ej. 644)
+        printf("- %s | Inodo: %lu | Tamaño: %ld bytes | Permisos: %o\n",
+               nombre,
+               (unsigned long)memoria_archivos[i].num_inodo,
+               (long)memoria_archivos[i].tamanio,
+               memoria_archivos[i].permisos & 0777); 
+    }
+    printf("========================================\n\n");
+
+    // 5. Transformar el proceso principal en Demonio
     convertir_demonio();
 
-    // 5. Bucle Infinito de Monitoreo Continuo
+    // 6. Bucle Infinito de Monitoreo Continuo
     while (1) {
         // RESETEAR CONTADOR: Vital para no arrastrar datos de la iteración de hace 5 segundos
         total_archivos = 0; 
@@ -134,7 +153,7 @@ int main(int argc, char *argv[]) {
         sleep(5);
     }
 
-    // Liberación formal de recursos (Teórica, el demonio corre hasta ser matado)
+    // Liberacion formal de recursos (Teórica, el demonio corre hasta ser matado)
     cerrar_limpiar_ipc();
     return EXIT_SUCCESS;
 }

@@ -9,7 +9,9 @@
 #define SHM_NAME "/shm_backup_stats"
 #define SEM_NAME "/sem_backup_stats"
 
+//Puntero para acceder a estadisticas en m.compartida
 struct stats *estadisticas_globales = NULL;
+//Puntero al sem encargado de sincronizar acceso entro procesos
 sem_t *estadisticas_semaforos = NULL;
 
 void inicializar_memoria_compartida(void){
@@ -21,13 +23,13 @@ void inicializar_memoria_compartida(void){
         perror("Error en shm_open");
         exit(EXIT_FAILURE);
     }
-
+    //Definir tamanio de m.compartida
     if (ftruncate(fd, sizeof(struct stats)) == -1){
         perror("Error en ftruncate");
         exit(EXIT_FAILURE);
     }
-
-    estadisticas_globales = mmap(NULL, sizeof(struct stats), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    //Mapea la m.compartida
+    estadisticas_globales = mmap(NULL, sizeof(struct stats),PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (estadisticas_globales == MAP_FAILED){
         perror("Error en mmap");
         exit(EXIT_FAILURE);
@@ -40,7 +42,7 @@ void inicializar_memoria_compartida(void){
 
 void configurar_semaforos(void) {
     sem_unlink(SEM_NAME);
-
+    //Crear semaforo(valor inicial 1 -> funciona como mutex)
     estadisticas_semaforos = sem_open(SEM_NAME, O_CREAT, 0666, 1);
     if (estadisticas_semaforos == SEM_FAILED){
         perror("Error en sem_open");

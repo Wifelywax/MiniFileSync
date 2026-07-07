@@ -47,7 +47,7 @@ void crear_logger(void) {
             //Guarda en historial
             write(fd_log, buffer, bytes_leidos);
             //Muestra en Consola
-            write(STDOUT_FILENO, buffer, bytes_leidos);
+           write(STDOUT_FILENO, buffer, bytes_leidos);
         }
         //Cierre de descriptores y proceso
         close(fd_fifo);
