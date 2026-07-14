@@ -47,7 +47,7 @@ void crear_logger(void) {
             //Guarda en historial
             write(fd_log, buffer, bytes_leidos);
             //Muestra en Consola
-           write(STDOUT_FILENO, buffer, bytes_leidos);
+          // write(STDOUT_FILENO, buffer, bytes_leidos);
         }
         //Cierre de descriptores y proceso
         close(fd_fifo);
@@ -67,7 +67,7 @@ void registrar_evento(const char *nombre_archivo) {
    
     //Genera un mensaje con el formato:[AAAA-MM-DD HH:MM:SS]
     int longitud = snprintf( mensaje,sizeof(mensaje),
-        "[%04d-%02d-%02d %02d:%02d:%02d] copiado %s\n",
+        "[%04d-%02d-%02d %02d:%02d:%02d] copiado/modificado %s\n",
         tiempo_local->tm_year + 1900,
         tiempo_local->tm_mon + 1,
         tiempo_local->tm_mday,

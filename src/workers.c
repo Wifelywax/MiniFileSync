@@ -16,6 +16,8 @@
 extern char ruta_base_absoluta[PATH_MAX];
 
 void procesar_archivo(const char *ruta_origen,int id_worker){
+    (void)id_worker;
+
     //Copia ruta de archivo
     char cp_ruta[4096];
     strncpy(cp_ruta, ruta_origen, sizeof(cp_ruta));
@@ -24,7 +26,6 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
 
     char ruta_destino[PATH_MAX * 2];
    snprintf(ruta_destino, sizeof(ruta_destino), "%s/backup/%s", ruta_base_absoluta, nombre_archivo);
-
 
        struct stat stat_origen, stat_destino;
 
@@ -38,13 +39,9 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
     if (stat(ruta_destino, &stat_destino) == 0) {
         
         //Ver si es necesario volver a copiarlo
-        if (stat_origen.st_size == stat_destino.st_size && 
-            stat_origen.st_mtime <= stat_destino.st_mtime) {
-            
-          
-            printf("[Worker %d] Omitido (sin cambios): %s\n", id_worker, nombre_archivo);
+        if (stat_origen.st_size == stat_destino.st_size && stat_origen.st_mtime <= stat_destino.st_mtime) {  
             return;
-        }
+      }
     }
 
     //Ver el archivo original (Lectura)
@@ -72,12 +69,10 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
         }
     }
 
-    if (bytes_leidos == -1) {
-        perror("Error durante la lectura del origen");
-    } else {
-        // Mensaje actualizado para indicar que realmente hizo el trabajo
-        printf("[Worker %d] Copiado/Actualizado exitoso: %s\n", id_worker, nombre_archivo);
+    if (fsync(fd_destino) == -1) {
+        perror("Error al sincronizar con el disco");
     }
+    
     //Bloquea el semaforo
     sem_wait(estadisticas_semaforos); 
     
@@ -92,9 +87,10 @@ void procesar_archivo(const char *ruta_origen,int id_worker){
     close(fd_origen);
     close(fd_destino);
 
-    //Error del WSL
+    //Error con WSL
     struct utimbuf tiempos;
-    tiempos.modtime = stat_origen.st_mtime; // Copia tiempo de modificación exacto
+    tiempos.actime = stat_origen.st_atime; 
+    tiempos.modtime = stat_origen.st_mtime; // Tiempo de modificación
     
     // Sobrescribe los metadatos del backup para que sean idénticos al original
     if (utime(ruta_destino, &tiempos) == -1) {

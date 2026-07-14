@@ -56,4 +56,4 @@ void cerrar_limpiar_ipc(void){
     sem_close(estadisticas_semaforos);
     sem_unlink(SEM_NAME);
 }
- 
+

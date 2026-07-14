@@ -63,7 +63,7 @@ if(S_ISDIR(info_archivo.st_mode)){
  
     }
   }
-}
+} //hola
 
 closedir(directorio);
 }

@@ -29,10 +29,9 @@ if (pid<0){
 if(pid>0){
     printf("[Monitor] en segundo plano");
 }
-
+ 
 if(setsid() < 0){
-    perror("Error al ejecutar setsid");
-    //exit(EXIT_FAILURE);
+    //perror("Error al ejecutar setsid");
 }
 
 if(chdir("/")<0){
@@ -62,53 +61,46 @@ int main(int argc, char *argv[]) {
         perror("Error al obtener el directorio actual");
         exit(EXIT_FAILURE);
     }
-    // 2. Resolver la ruta absoluta del directorio objetivo antes del chdir("/")
+
     char directorio_objetivo[PATH_MAX];
     if (realpath(argv[1], directorio_objetivo) == NULL) {
         perror("Error al resolver la ruta absoluta del directorio");
         exit(EXIT_FAILURE);
     }
-
-    // 3. Inicializar las herramientas globales (Memoria compartida, Semáforos y Logger)
+    // Inicializar Memoria compartida, Semáforos y Logger
     inicializar_memoria_compartida();
     configurar_semaforos();
     crear_logger();
-
-    //4. Imprimir datos
+    //Imprimir datos
     total_archivos = 0;
     escanear_directorio(directorio_objetivo); // Escanear una vez
-    
+   
     printf("\n=== METADATOS RECOPILADOS EN MEMORIA ===\n");
     for (int i = 0; i < total_archivos; i++) {
-        // Extraemos solo el nombre del archivo de la ruta larga para que se vea bonito
+        // Extraer nombre del archivo de la ruta 
         char *nombre = strrchr(memoria_archivos[i].ruta, '/');
         nombre = (nombre) ? nombre + 1 : memoria_archivos[i].ruta;
-
-        // Imprimimos el Inodo, Tamaño y los Permisos en formato octal (ej. 644)
-        printf("- %s | Inodo: %lu | Tamaño: %ld bytes | Permisos: %o\n",
+        // Imprimir Inodo, Tamaño y los Permisos
+        printf("[Worker %d]| - %s | Inodo: %lu | Tamaño: %ld bytes | Permisos: %o\n",
+               (i % NUM_WORKERS) + 1,
                nombre,
                (unsigned long)memoria_archivos[i].num_inodo,
                (long)memoria_archivos[i].tamanio,
                memoria_archivos[i].permisos & 0777); 
     }
     printf("========================================\n\n");
-
-    // 5. Transformar el proceso principal en Demonio
+    //Transformar en Demonio
     convertir_demonio();
-
-    // 6. Bucle Infinito de Monitoreo Continuo
+    //Bucle Infinito 
     while (1) {
-        // RESETEAR CONTADOR: Vital para no arrastrar datos de la iteración de hace 5 segundos
+       
         total_archivos = 0; 
-
-        // Escanear el directorio objetivo de forma recursiva
+       
         escanear_directorio(directorio_objetivo);
-
-        // Si el escáner detectó archivos, procedemos con la asignación a los workers
+        // Si hay archivos, se asigna un worker
         if (total_archivos > 0) {
             int tuberia[NUM_WORKERS][2];
             pid_t pids[NUM_WORKERS];
-
             // Crear las tuberías y los procesos trabajadores
             for (int i = 0; i < NUM_WORKERS; i++) {
                 if (pipe(tuberia[i]) == -1) {
@@ -117,7 +109,7 @@ int main(int argc, char *argv[]) {
 
                 pids[i] = fork();
                 if (pids[i] == 0) {
-                    // Código del Worker (Hijo)
+                    //Worker 
                     close(tuberia[i][1]); // Cierra escritura
                     char ruta_recibida[PATH_MAX];
 
@@ -127,33 +119,26 @@ int main(int argc, char *argv[]) {
                     close(tuberia[i][0]);
                     exit(EXIT_SUCCESS);
                 } else {
-                    // Código del Monitor (Padre)
+                    //Monitor 
                     close(tuberia[i][0]); // Cierra lectura
                 }
             }
-
-            // Distribuir de forma equitativa las rutas encontradas
+            // Distribuir de forma equitativa
             for (int i = 0; i < total_archivos; i++) {
                 int id_worker_asignado = i % NUM_WORKERS;
                 write(tuberia[id_worker_asignado][1], memoria_archivos[i].ruta, PATH_MAX);
             }
-
-            // Indicar fin de transmisión cerrando los extremos de escritura
+            // Cerrar extremos de escritura
             for (int i = 0; i < NUM_WORKERS; i++) {
                 close(tuberia[i][1]);
             }
-
-            // Esperar que la ronda actual de workers termine por completo
+            // Esperar el fin del trabajo
             for (int i = 0; i < NUM_WORKERS; i++) {
                 waitpid(pids[i], NULL, 0);
             }
         }
-
-        // Esperar 5 segundos exactos antes de la siguiente revisión completa
         sleep(5);
     }
-
-    // Liberacion formal de recursos (Teórica, el demonio corre hasta ser matado)
     cerrar_limpiar_ipc();
     return EXIT_SUCCESS;
-}
+} //hola
