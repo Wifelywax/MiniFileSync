@@ -141,4 +141,4 @@ int main(int argc, char *argv[]) {
     }
     cerrar_limpiar_ipc();
     return EXIT_SUCCESS;
-} //hola
+} 
